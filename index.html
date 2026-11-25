@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="C팀 내전 무자비 피어리스 밴픽 가이드. 표적 밴에 따른 대체 픽과 블루·레드 선픽, 3세트 조합을 확인하세요.">
+  <meta name="theme-color" content="#111319">
+  <title>C팀 내전 밴픽 가이드</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#top" class="wordmark"><span class="team-symbol" aria-hidden="true">C</span> C팀 내전</a>
+      <nav aria-label="페이지 목차">
+        <a href="#simulator">밴 대응</a>
+        <a href="#lineups">세트별 조합</a>
+        <a href="#opponents">상대별 밴</a>
+        <a href="#rules">대회 룰</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top" class="container">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="hero-label">무자비 피어리스 · 3전 2선승</p>
+        <h1 id="hero-title">C팀 내전<br><span>밴픽 가이드</span></h1>
+        <p class="hero-description">표적 밴이 들어와도 다음 픽을 바로 정할 수 있게. 지금 막힌 챔피언을 선택해 1~3세트 조합을 확인하세요.</p>
+      </div>
+    </section>
+
+    <section class="section" id="simulator" aria-labelledby="sim-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="sim-title">표적 밴 대응</h2>
+          <p>밴되거나 상대가 가져간 챔피언을 선택하세요. 레오나·렐은 기본 시나리오에서 막힌 것으로 가정합니다.</p>
+        </div>
+        <button type="button" class="button button-outline" id="share">현재 조합 링크 복사</button>
+      </div>
+
+      <div class="sim-grid">
+        <div class="panel controls">
+          <div class="preset-bar" id="presets" aria-label="밴 상황 예시"></div>
+          <fieldset><legend>주력 챔피언</legend><div id="target-controls" class="champ-controls wide-controls"></div></fieldset>
+          <fieldset><legend>서포터</legend><div id="support-controls" class="champ-controls"></div></fieldset>
+          <p class="selection-status" id="selection-status" aria-live="polite"></p>
+        </div>
+
+        <aside class="panel draft-order" aria-labelledby="order-title">
+          <div>
+            <h3 id="order-title">1세트 선픽</h3>
+            <p class="small muted">[추정] 토너먼트 드래프트 기준</p>
+          </div>
+          <fieldset><legend class="sr-only">우리 진영</legend><div id="side-controls" class="segmented"></div></fieldset>
+          <div id="first-picks"></div>
+          <p id="pick-note" class="small muted"></p>
+        </aside>
+      </div>
+      <p id="share-status" class="small muted share-status" role="status"></p>
+    </section>
+
+    <section class="section" id="lineups" aria-labelledby="lineups-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="lineups-title">1~3세트 추천 조합</h2>
+          <p>[추정] 선택한 밴과 세트별 아군 픽을 반영한 예시입니다. 매 세트 양 팀의 실제 밴과 픽을 확인하세요.</p>
+        </div>
+      </div>
+      <div id="plan" class="plan-grid"></div>
+    </section>
+
+    <section class="section opponent-section" id="opponents" aria-labelledby="opponents-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="opponents-title">상대별 1세트 밴</h2>
+          <p>[추정] 상대와 진영을 고르면 추천 밴이 바뀝니다. 상대를 고른 경우 여기의 우리 밴도 다음 세트 조합에 반영됩니다.</p>
+        </div>
+        <fieldset><legend class="sr-only">상대 팀</legend><div id="opponent-controls" class="segmented opponents"></div></fieldset>
+      </div>
+      <div class="panel opponent-panel" id="opponent-bans"></div>
+    </section>
+
+    <section class="section rules-section" id="rules" aria-labelledby="rules-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="rules-title">피어리스 규칙</h2>
+          <p>한 세트의 양 팀 밴 10개와 픽 10개가 같은 시리즈에 누적됩니다. 다음 시리즈에서 초기화합니다.</p>
+        </div>
+      </div>
+      <div class="rules-grid">
+        <div class="panel rule-count"><span>1세트 시작</span><strong>0<span>개</span></strong></div>
+        <div class="panel rule-count"><span>2세트 시작</span><strong>20<span>개 금지</span></strong></div>
+        <div class="panel rule-count"><span>3세트 시작</span><strong>40<span>개 금지</span></strong></div>
+      </div>
+      <div class="panel rule-detail">
+        <p><strong>[불확실] 대회 드래프트 방식</strong> 토너먼트 드래프트가 적용되면 팀당 3밴 → 3픽 → 2밴 → 2픽입니다. 동시 5밴으로 확정되면 상대별 표의 두 밴 목록을 합쳐 픽 전에 진행합니다.</p>
+        <p>효준은 정글을 맡지 않습니다. 야스오·요네로 전환한 세트는 DevJoon이 미드, 효준이 원딜을 맡습니다.</p>
+      </div>
+    </section>
+    <noscript>밴 대응 시뮬레이터를 사용하려면 브라우저에서 JavaScript를 켜 주세요.</noscript>
+  </main>
+
+  <footer class="container footer">
+    <p>내전 사용 기록 211경기 · 2026년 11월 25일 확인</p>
+    <div class="source-links">
+      <a href="https://github.com/mqzkim/c-team-draft/blob/main/guide.md">상세 밴픽 위키</a>
+      <a href="https://toss-gg.pages.dev/sr">toss.gg 내전 기록</a>
+      <a href="https://www.leagueoflegends.com/en-sg/news/dev/dev-the-return-of-ranked-5s/">라이엇 드래프트 설명</a>
+    </div>
+    <p class="asset-notice">C팀 내전 밴픽 가이드는 라이엇 게임즈의 <a href="https://www.riotgames.com/ko/legal">지식재산 이용 정책</a>에 따라 라이엇 게임즈 소유의 자산을 이용하여 제작되었습니다. 라이엇 게임즈는 이 프로젝트를 지지하거나 후원하지 않습니다.</p>
+  </footer>
+</body>
+</html>
