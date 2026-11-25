@@ -283,3 +283,42 @@ h3 { color: var(--ink); font-size: 1.125rem; letter-spacing: -.035em; font-weigh
   .ban-slots { grid-template-columns: repeat(auto-fit, minmax(53px, 1fr)); }
   .ban-chip, .open-ban { font-size: .76rem; }
 }
+
+#composition-report { display: grid; gap: 12px; }
+.report-brief { padding: 18px 20px; }
+.report-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; margin-bottom: 7px; }
+.report-head h3 { color: var(--gold); font-size: 1.3rem; }
+.report-status { color: var(--muted); white-space: nowrap; font-size: .84rem; margin-top: 3px; }
+.report-signals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 13px 0 0; }
+.report-signals > div { background: var(--panel-deep); border-radius: 8px; padding: 7px 10px; }
+.report-signals dt, .record-list dt { color: var(--muted); font-size: .84rem; }
+.report-signals dd, .record-list dd { margin: 0; font-weight: 690; font-size: .94rem; overflow-wrap: anywhere; }
+.report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.report-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.report-card { padding: 14px 16px; min-width: 0; }
+.report-card p { margin-top: 4px; word-break: keep-all; }
+.report-call { color: var(--gold); font-weight: 700; }
+.report-risks { padding-left: 1.2rem; margin: 4px 0 0; color: var(--muted); word-break: keep-all; }
+.report-risks li + li { margin-top: 4px; }
+.report-evidence { display: grid; gap: 8px; padding-top: 5px; }
+.exact-note { color: var(--muted); padding: 10px 12px; font-size: .9rem; word-break: keep-all; }
+.exact-note strong { color: var(--ink); padding-right: .3rem; }
+.report-card h4 { margin: 0; font-size: .9rem; color: var(--muted); }
+.record-pair { font-weight: 720; font-size: 1rem; }
+.record-list { display: grid; gap: 6px; margin: 7px 0 0; }
+.record-list > div { padding-top: 5px; border-top: 1px solid var(--line); }
+.evidence-details { padding: 13px 16px; margin-top: 12px; color: var(--muted); }
+.evidence-details summary { color: var(--ink); cursor: pointer; font-weight: 700; }
+.evidence-details p { margin-top: 8px; word-break: keep-all; }
+.comfort { opacity: .9; }
+@media (max-width: 680px) {
+  .report-brief, .report-card { padding: 12px 13px; }
+  .report-signals { grid-template-columns: 1fr; }
+  .report-signals > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; }
+  .report-grid, .report-pair { grid-template-columns: 1fr; gap: 7px; }
+  .record-list > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; }
+  .record-list dd { font-size: .875rem; }
+}
+@media (max-width: 340px) {
+  .site-header nav { flex-wrap: wrap; justify-content: flex-end; }
+}

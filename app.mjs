@@ -1,6 +1,8 @@
 import { VERSION, applyPlan, championMenu, enemyCases, formats, getPlans, getSelectedPlan, lanes, limitFor, makeSearch, opponents, readState, scouting } from "./draft.mjs?v=3";
 import { adviceFor, getBoard, lineupNote, openerIds, planFor } from "./cross.mjs?v=3";
 import { roster } from "./roster.mjs";
+import { evaluateComposition, formatSample } from "./composition.mjs";
+import { compositionStats } from "./composition-stats.mjs";
 
 const state = readState(location.search);
 const byId = id => document.getElementById(id);
@@ -315,18 +317,99 @@ function renderDraft(board, plan) {
   action.replaceChildren(...content);
 }
 
-function renderLineup(plan) {
+function renderLineup(plan, comfort) {
   const positions = element("ul", "positions");
   plan.picks.forEach(({ id, lane, player, locked }) => {
     const item = element("li", "position");
     item.dataset.champion = id ?? "";
     const copy = element("div", "pick-copy");
-    copy.append(element("strong", "", roster[id] ?? "준비 카드 확인"), element("small", "", player));
+    const history = comfort[lane];
+    copy.append(element("strong", "", roster[id] ?? "준비 카드 확인"), element("small", "", player),
+      element("small", "comfort", id ? (history ? "해당 역할 " + history + "경기" : "해당 역할 관측 0경기") : ""));
     item.append(element("span", "lane-name", lanes[lane]), portrait(id), copy);
     if (locked) item.append(element("small", "confirmed-pick", "확정"));
     positions.append(item);
   });
   byId("lineup").replaceChildren(positions, element("p", "lineup-note", lineupNote(state, plan)));
+}
+
+function renderComposition(report) {
+  const brief = element("div", "panel report-brief");
+  const heading = element("div", "report-head");
+  heading.append(
+    element("h3", "", report.title),
+    element("span", "report-status", report.complete ? "확정 " + report.locked + "/5" : "일부 준비 카드 없음"),
+  );
+  const signals = element("dl", "report-signals");
+  report.signals.forEach(({ label, value }) => {
+    const field = element("div");
+    field.append(element("dt", "", label), element("dd", "", value));
+    signals.append(field);
+  });
+  brief.append(heading, element("p", "muted", "[추정] " + report.summary), signals);
+
+  const timing = element("div", "report-grid");
+  report.timing.forEach(({ label, text }) => {
+    const card = element("article", "panel report-card");
+    card.append(element("h3", "", label), element("p", "muted", text));
+    timing.append(card);
+  });
+
+  const decisions = element("div", "report-grid report-pair");
+  const teamfight = element("article", "panel report-card");
+  teamfight.append(
+    element("h3", "", "한타에서 먼저 할 일"),
+    element("p", "muted", report.teamfight),
+    element("p", "report-call", report.call),
+  );
+  const risks = element("article", "panel report-card");
+  risks.append(element("h3", "", "주의할 조건"));
+  if (report.risks.length || report.alternate) {
+    const list = element("ul", "report-risks");
+    [...report.risks, report.alternate].filter(Boolean).forEach(risk => list.append(element("li", "", risk)));
+    risks.append(list);
+  } else {
+    risks.append(element("p", "muted", "상대가 아직 보여 주지 않은 진입과 아군 핵심 스킬이 남았는지 확인하세요."));
+  }
+  decisions.append(teamfight, risks);
+
+  const evidence = element("div", "report-evidence");
+  evidence.append(
+    element("h3", "", "같은 픽의 실제 경기 기록"),
+    element("p", "small muted", "내전 전체와 지정된 C팀 선수의 기록을 따로 셉니다. 같은 바텀 조합의 한국 솔로랭크는 참고용입니다."),
+  );
+  const exact = element("p", "panel exact-note");
+  exact.append(element("strong", "", "현재 5픽과 포지션 전체 "),
+    document.createTextNode("내전 " + formatSample(report.exact.all) + " · C팀 5명 " + formatSample(report.exact.team)));
+  evidence.append(exact);
+
+  const rows = element("div", "report-grid evidence-grid");
+  for (const record of report.evidence) {
+    const card = element("article", "panel report-card");
+    const stats = element("dl", "record-list");
+    const samples = [["내전 같은 역할", record.all], ["우리 지정 두 선수", record.team]];
+    if (record.ranked) samples.push(["KR 솔로랭크 26.23", record.ranked]);
+    for (const [label, count] of samples) {
+      const field = element("div");
+      field.append(element("dt", "", label), element("dd", "", formatSample(count)));
+      stats.append(field);
+    }
+    card.append(element("h4", "", record.title), element("p", "record-pair", record.name || "챔피언 미정"), stats);
+    rows.append(card);
+  }
+  evidence.append(rows);
+  byId("composition-report").replaceChildren(brief, timing, decisions, evidence);
+}
+
+function renderValidation() {
+  const { train, test, scores } = compositionStats.validation;
+  const html = byId("validation");
+  html.append(element("p", "", "기존 픽 추천은 가용 챔피언, 역할별 준비 카드, 상대 선점 순서를 사용합니다."));
+  html.append(element("p", "", "시간순으로 앞 " + train + "경기를 학습하고 최근 " + test
+    + "경기를 검증했습니다. 로그손실은 50% 고정 " + scores.fair.logLoss.toFixed(3)
+    + ", 선수만 " + scores.player.logLoss.toFixed(3)
+    + ", 선수·챔피언·역할별 쌍 " + scores.combo.logLoss.toFixed(3)
+    + "이었습니다. 낮을수록 좋습니다. [추정] 이번 표본에서 조합을 추가해 개선된 근거가 없어서 운영 근거와 관측 전적을 제시합니다."));
 }
 
 function render() {
@@ -350,8 +433,10 @@ function render() {
   renderBans(board, "ours", "our-bans", "our-count");
   renderBans(board, "theirs", "enemy-bans", "enemy-count");
   const plan = planFor(state, board);
+  const report = evaluateComposition(state, board, plan);
   renderDraft(board, plan);
-  renderLineup(plan);
+  renderLineup(plan, report.comfort);
+  renderComposition(report);
   byId("scouting").textContent = Object.hasOwn(scouting, state.opponent) ? scouting[state.opponent] : "상대 팀을 고르면 해당 팀의 내전 챔피언 사용 기록을 볼 수 있습니다.";
 
   const next = new URL(location.href);
@@ -382,4 +467,5 @@ byId("share").addEventListener("click", async () => {
   }
 });
 
+renderValidation();
 render();
