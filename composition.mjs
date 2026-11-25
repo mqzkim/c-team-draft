@@ -173,6 +173,7 @@ export function evaluateComposition(state, board, plan) {
   });
 
   return {
+    style,
     title: text.title,
     summary: text.summary,
     timing: [

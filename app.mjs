@@ -1,8 +1,10 @@
 import { VERSION, applyPlan, championMenu, enemyCases, formats, getPlans, getSelectedPlan, lanes, limitFor, makeSearch, opponents, readState, scouting } from "./draft.mjs?v=3";
 import { adviceFor, getBoard, lineupNote, openerIds, planFor } from "./cross.mjs?v=3";
 import { roster } from "./roster.mjs";
-import { evaluateComposition, formatSample } from "./composition.mjs";
+import { evaluateComposition, formatSample } from "./composition.mjs?v=5";
 import { compositionStats } from "./composition-stats.mjs";
+import { assessObjective, getMacro, objectives, objectiveCalls, routeOptions, trackingCalls } from "./macro.mjs";
+import { objectiveStats } from "./macro-stats.mjs";
 
 const state = readState(location.search);
 const byId = id => document.getElementById(id);
@@ -53,6 +55,7 @@ function revise(message, change) {
   normalizeInitial();
   status.textContent = message + (hadPicks ? " 픽 기록도 초기화했습니다." : "");
   draftStatus.textContent = "";
+  objectiveForm.reset();
   render();
 }
 
@@ -412,6 +415,124 @@ function renderValidation() {
     + "이었습니다. 낮을수록 좋습니다. [추정] 이번 표본에서 조합을 추가해 개선된 근거가 없어서 운영 근거와 관측 전적을 제시합니다."));
 }
 
+const objectiveSelect = byId("objective-select");
+const objectiveForm = byId("objective-form");
+let routePreference = "auto";
+const routeButtons = installOptions(routeOptions, "macro-route", value => { routePreference = value; render(); });
+
+objectives.forEach(item => addOption(objectiveSelect, item.id, item.label));
+objectiveSelect.value = "dragon";
+for (const field of ["allies", "enemy", "possible"]) {
+  const select = objectiveForm.elements.namedItem(field);
+  addOption(select, "", "미입력");
+  for (let value = 0; value <= 5; value++) addOption(select, String(value), value + "명");
+}
+
+function renderMacro(plan, report) {
+  const macro = getMacro(state, plan, report, routePreference);
+  routeButtons.forEach(({ id, toggle }) => toggle.setAttribute("aria-pressed", String(id === routePreference)));
+  const group = element("div", "macro-route-grid");
+  const target = macro.target === "bot" ? "바텀 쪽" : "탑 쪽";
+  macro.routes.forEach(({ side, camps, start, earlyCamps, current }) => {
+    const card = element("article", "panel report-card route-card");
+    const header = element("div", "report-head");
+    header.append(
+      element("h3", side === "blue" ? "route-blue" : "route-red", side === "blue" ? "블루" : "레드"),
+      element("span", "small muted", current ? "우리 진영" : "반대 진영 참고"),
+    );
+    const steps = element("ol", "route-steps");
+    camps.forEach(camp => steps.append(element("li", "", camp)));
+    const short = macro.jungler?.short
+      ? "갱 호응·퇴로가 확인되면 " + target + " 3캠 " + earlyCamps.join(" → ") + "도 후보로 봅니다."
+      : "세 캠프를 마치면 라인 상태를 다시 확인하고, 갱이나 강가 싸움의 이득이 불분명하면 캠프를 이어갑니다.";
+    card.append(header, element("p", "route-direction", start + " → " + target + "에서 마무리"), steps,
+      element("p", "small muted", short));
+    group.append(card);
+  });
+  const intro = element("p", "small muted", "[추정] " + macro.routeReason);
+  const nodes = [intro, group];
+  if (macro.jungler) {
+    const sample = element("p", "macro-sample small muted");
+    sample.append(document.createTextNode("공개 시작 캠프 관측 " + macro.jungler.games + " · "));
+    const link = element("a", "", "JungleClear");
+    link.href = "https://jungleclear.lol/en/champion/" + macro.jungler.source;
+    sample.append(link);
+    nodes.push(sample);
+  }
+  byId("macro-routes").replaceChildren(...nodes);
+
+  const lines = macro.lines.map(({ lane, player, champion, text }) => {
+    const row = element("div", "lane-order");
+    const heading = element("div", "lane-order-name");
+    heading.append(element("strong", "", lanes[lane]), element("small", "", player + (champion ? " · " + champion : "")));
+    row.append(heading, element("p", "muted", text));
+    return row;
+  });
+  byId("macro-lines").replaceChildren(...lines);
+  drawObjective();
+}
+
+function drawTracking() {
+  const cards = trackingCalls.map(({ when, owner, text }) => {
+    const card = element("article", "panel report-card");
+    card.append(element("h4", "", when), element("p", "call-owner", owner), element("p", "small muted", text));
+    return card;
+  });
+  byId("macro-tracking").replaceChildren(...cards);
+}
+
+const selectedObjective = () => objectives.find(item => item.id === objectiveSelect.value) ?? objectives[1];
+
+function drawObjective() {
+  const objective = selectedObjective();
+  const head = element("div", "report-head");
+  head.append(element("h3", "", objective.label), element("span", "small muted", objective.timer + " · " + objective.side));
+  const text = element("dl", "objective-advice");
+  for (const [label, copy] of [["준비", objective.prepare], ["시작", objective.start], ["교환·보류", objective.trade]]) {
+    const field = element("div");
+    field.append(element("dt", "", label), element("dd", "", copy));
+    text.append(field);
+  }
+  const items = [head, text];
+  const sample = objectiveStats.first[objective.id];
+  if (sample) {
+    const side = state.side === "blue" ? "블루" : "레드";
+    const summary = ([wins, games]) => (100 * wins / games).toFixed(1) + "% · "
+      + wins.toLocaleString("ko-KR") + "승 / " + games.toLocaleString("ko-KR") + "경기";
+    items.push(element("p", "small objective-history", "첫 획득 팀의 최종 전적 · 전체 "
+      + summary(sample.all) + " · " + side + " " + summary(sample[state.side])));
+  }
+  byId("objective-brief").replaceChildren(...items);
+  const calls = objective.early
+    ? [{ time: "첫 강가 진입 10~20초 전", task: "우리 정글 체력과 인접 라인 도착, 적 정글 마지막 확인을 콜합니다." }, objectiveCalls[3]]
+    : objectiveCalls;
+  byId("objective-calls").replaceChildren(...calls.map(({ time, task }) => {
+    const card = element("article", "panel report-card");
+    card.append(element("h4", "", time), element("p", "small muted", task));
+    return card;
+  }));
+  drawObjectiveResult();
+}
+
+function drawObjectiveResult() {
+  const get = name => objectiveForm.elements.namedItem(name);
+  const count = name => get(name).value === "" ? null : Number(get(name).value);
+  const snapshot = {
+    allies: count("allies"), enemy: count("enemy"), possible: count("possible"), location: get("location").value,
+    vision: get("vision").checked, priority: get("priority").checked, smite: get("smite").checked,
+    finish: get("finish").checked, zone: get("zone").checked, trade: get("trade").checked, critical: get("critical").checked,
+  };
+  const result = assessObjective(selectedObjective(), snapshot);
+  const panel = byId("objective-result");
+  panel.dataset.status = result.status;
+  panel.replaceChildren(element("strong", "", "[추정] " + result.label), element("p", "small", result.message));
+}
+
+objectiveSelect.addEventListener("change", () => { objectiveForm.reset(); drawObjective(); });
+objectiveForm.addEventListener("input", drawObjectiveResult);
+objectiveForm.addEventListener("submit", event => event.preventDefault());
+objectiveForm.addEventListener("reset", () => setTimeout(drawObjectiveResult, 0));
+
 function render() {
   const board = getBoard(state);
   if (board.played.length !== state.moves.length) {
@@ -437,6 +558,7 @@ function render() {
   renderDraft(board, plan);
   renderLineup(plan, report.comfort);
   renderComposition(report);
+  renderMacro(plan, report);
   byId("scouting").textContent = Object.hasOwn(scouting, state.opponent) ? scouting[state.opponent] : "상대 팀을 고르면 해당 팀의 내전 챔피언 사용 기록을 볼 수 있습니다.";
 
   const next = new URL(location.href);
@@ -468,4 +590,5 @@ byId("share").addEventListener("click", async () => {
 });
 
 renderValidation();
+drawTracking();
 render();
