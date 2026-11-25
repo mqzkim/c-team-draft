@@ -6,8 +6,8 @@
   <meta name="description" content="C팀 내전 무자비 피어리스 밴픽 가이드. 표적 밴에 따른 대체 픽과 블루·레드 선픽, 3세트 조합을 확인하세요.">
   <meta name="theme-color" content="#111319">
   <title>C팀 내전 밴픽 가이드</title>
-  <link rel="stylesheet" href="./styles.css">
-  <script type="module" src="./app.mjs"></script>
+  <link rel="stylesheet" href="./styles.css?v=2">
+  <script type="module" src="./app.mjs?v=2"></script>
 </head>
 <body>
   <header class="site-header">
@@ -15,6 +15,7 @@
       <a href="#top" class="wordmark"><span class="team-symbol" aria-hidden="true">C</span> C팀 내전</a>
       <nav aria-label="페이지 목차">
         <a href="#simulator">밴 대응</a>
+        <a href="#cross-draft">픽 순서</a>
         <a href="#lineups">세트별 조합</a>
         <a href="#opponents">상대별 밴</a>
         <a href="#rules">대회 룰</a>
@@ -51,14 +52,53 @@
         <aside class="panel draft-order" aria-labelledby="order-title">
           <div>
             <h3 id="order-title">1세트 선픽</h3>
-            <p class="small muted">[추정] 토너먼트 드래프트 기준</p>
+            <p class="small muted">[추정] 상대 픽 입력 전 우선순위</p>
           </div>
           <fieldset><legend class="sr-only">우리 진영</legend><div id="side-controls" class="segmented"></div></fieldset>
           <div id="first-picks"></div>
           <p id="pick-note" class="small muted"></p>
+          <a class="small cross-link" href="#cross-draft">상대 픽을 반영해서 보기</a>
         </aside>
       </div>
       <p id="share-status" class="small muted share-status" role="status"></p>
+    </section>
+
+    <section class="section" id="cross-draft" aria-labelledby="cross-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="cross-title">교차 픽 순서</h2>
+          <p>[불확실] 1세트 토너먼트 드래프트 적용 가정입니다. 위에서 막힌 카드를 체크한 뒤, 양 팀의 선택을 실제 순서대로 입력하세요.</p>
+        </div>
+      </div>
+      <div class="panel cross-panel">
+        <div class="cross-top">
+          <span id="cross-side" class="side-badge"></span>
+          <div class="cross-toolbar">
+            <button class="button button-outline" type="button" id="undo-move">한 단계 되돌리기</button>
+            <button class="button button-outline" type="button" id="reset-moves">픽 순서 초기화</button>
+          </div>
+        </div>
+        <details class="initial-bans">
+          <summary>1차 밴 직접 기록</summary>
+          <div class="initial-bans-content">
+            <label class="watch-toggle"><input type="checkbox" id="apply-watch">상대별 추천 1차 밴을 먼저 반영</label>
+            <div id="extra-bans-picker"></div>
+            <div id="extra-bans" class="cross-toolbar"></div>
+          </div>
+        </details>
+        <div id="draft-roadmap" class="draft-roadmap" aria-label="양 팀 드래프트 순서"></div>
+        <div id="draft-action" class="draft-action"></div>
+        <p id="draft-status" class="small muted" role="status"></p>
+      </div>
+      <div class="opening-cases" aria-labelledby="opening-title">
+        <h3 id="opening-title">레드에서 상대 B1 대응</h3>
+        <p class="small muted">[추정] 다른 주력 카드가 열려 있을 때의 R1·R2 예시입니다. 카드를 누르면 기본 밴 가정에서 해당 선픽으로 새 기록을 시작합니다.</p>
+        <div id="opening-cases" class="case-grid"></div>
+      </div>
+      <div class="panel cross-notes">
+        <p><strong>우리 블루</strong> B1을 고른 뒤 상대 R1·R2를 확인하고 B2·B3를 한 묶음으로 결정합니다. 정글과 원딜을 동시에 뺏기면 세주아니·케이틀린을 먼저 봅니다. 2차 밴 후 B4·B5를 고르고 상대 R5가 남습니다.</p>
+        <p><strong>우리 레드</strong> R1·R2에서 두 포지션을 확보하고 상대 B2·B3가 나온 뒤 R3를 결정합니다. 2차 밴 뒤 R4로 남은 급한 포지션을 잡고, 탑을 열어 둔 경우 R5에서 매치업을 봅니다.</p>
+      </div>
     </section>
 
     <section class="section" id="lineups" aria-labelledby="lineups-title">

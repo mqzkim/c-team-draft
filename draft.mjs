@@ -61,10 +61,14 @@ const topPool = ["Jayce", "Ambessa", "Olaf", "Gangplank", "Jax", "Camille"];
 const junglePool = ["Nocturne", "Sejuani", "MonkeyKing", "LeeSin", "Briar", "XinZhao"];
 const devAdc = ["Jinx", "Caitlyn", "Vayne", "Ezreal", "Kaisa", "Smolder"];
 const supportPool = ["Leona", "Nautilus", "Rell", "Alistar", "Thresh", "Lulu", "Rakan", "Karma"];
+export const firstPools = [
+  topPool, junglePool, ["Sylas", "Ekko", "Viktor", "Orianna", "Kassadin", "Galio"], devAdc, supportPool,
+];
 
-export function getDraft(blocked, side, opponent) {
-  const watch = getWatch(opponent, side);
-  const unavailable = new Set([...blocked, ...(watch?.first ?? []), ...(watch?.second ?? [])]);
+export function getDraft(blocked, side, opponent, opening = null) {
+  const watch = opening ? null : getWatch(opponent, side);
+  const locks = opening?.locks ?? [];
+  const unavailable = new Set([...blocked, ...(watch?.first ?? []), ...(watch?.second ?? []), ...locks.filter(Boolean)]);
 
   function take(preferred, pool = []) {
     const id = [...preferred, ...pool].find(candidate => !unavailable.has(candidate));
@@ -74,15 +78,20 @@ export function getDraft(blocked, side, opponent) {
   }
 
   return [0, 1, 2].map(index => {
-    const top = take([topPool[index]], topPool);
-    const jungle = take([junglePool[index]], junglePool);
+    function inLane(lane, preferred, pool = []) {
+      if (index !== 0) return take(preferred, pool);
+      return locks[lane] || take([...(opening?.preferred[lane] ?? []), ...preferred], pool);
+    }
+
+    const top = inLane(0, [topPool[index]], topPool);
+    const jungle = inLane(1, [junglePool[index]], junglePool);
     const swap = index === 2 && ["Yasuo", "Yone"].some(id => !unavailable.has(id));
     const hyoMid = [
-      ["Sylas", "Ekko", "Viktor", "Orianna"],
+      firstPools[2],
       ["Viktor", "Orianna", "Ekko", "Kassadin", "Galio"],
       ["Orianna", "Ekko", "Galio", "Kassadin", "Viktor"],
     ][index];
-    const middle = swap ? take(["Yasuo", "Yone"]) : take(hyoMid);
+    const middle = swap ? take(["Yasuo", "Yone"]) : inLane(2, hyoMid);
     const adcPriority = [
       ["Jinx", "Caitlyn"],
       ["Caitlyn", "Vayne", "Ezreal", "Kaisa"],
@@ -90,9 +99,9 @@ export function getDraft(blocked, side, opponent) {
     ][index];
     const bottom = swap
       ? take(middle === "Yasuo" ? ["MissFortune", "Kaisa", "Ezreal"] : ["Kaisa", "MissFortune", "Ezreal"])
-      : take(adcPriority, devAdc);
+      : inLane(3, adcPriority, devAdc);
     const supportPriority = [supportPool, ["Thresh", "Lulu", "Rakan", "Karma"], ["Lulu", "Rakan", "Karma"]][index];
-    const support = take(supportPriority, supportPool);
+    const support = inLane(4, supportPriority, supportPool);
 
     const players = ["탑가는 경문이", "검은살치살", swap ? "DevJoon" : "효준", swap ? "효준" : "DevJoon", "mqz"];
     const picks = [top, jungle, middle, bottom, support].map((id, lane) => ({ id, lane, player: players[lane] }));
