@@ -1,55 +1,41 @@
-import { firstPools, getDraft, getWatch, lanes } from "./draft.mjs?v=2";
+import { getPlans, getSelectedPlan, lanes, playersFor, poolsFor } from "./draft.mjs?v=3";
 import { roster } from "./roster.mjs";
 
 const pick = (slot, side) => ({ slot, side, kind: "pick", label: slot });
 const ban = (slot, side, number) => ({ slot, side, kind: "ban", label: (side === "red" ? "R" : "B") + " 밴 " + number });
 
-export const phaseSteps = [
-  {
-    label: "1차 픽",
-    steps: [pick("B1", "blue"), pick("R1", "red"), pick("R2", "red"), pick("B2", "blue"), pick("B3", "blue"), pick("R3", "red")],
-  },
-  {
-    label: "2차 밴",
-    steps: [ban("RB4", "red", 4), ban("BB4", "blue", 4), ban("RB5", "red", 5), ban("BB5", "blue", 5)],
-  },
-  { label: "2차 픽", steps: [pick("R4", "red"), pick("B4", "blue"), pick("B5", "blue"), pick("R5", "red")] },
-];
-export const steps = phaseSteps.flatMap(phase => phase.steps);
+const early = [pick("B1", "blue"), pick("R1", "red"), pick("R2", "red"), pick("B2", "blue"), pick("B3", "blue"), pick("R3", "red")];
+const late = [pick("R4", "red"), pick("B4", "blue"), pick("B5", "blue"), pick("R5", "red")];
+const secondBans = [ban("RB4", "red", 4), ban("BB4", "blue", 4), ban("RB5", "red", 5), ban("BB5", "blue", 5)];
 
-export const openingExamples = [
-  { id: "Nautilus", response: "징크스·세주아니", next: "룰루를 R3 후보로 둡니다. 징크스와 앞라인을 먼저 잡아 B2·B3 정글 선점을 막습니다." },
-  { id: "Leona", response: "노틸러스·징크스", next: "레오나가 빠져도 노틸러스가 열려 있으면 바텀부터 확보하고 R3 녹턴을 봅니다." },
-  { id: "Jinx", response: "노틸러스·케이틀린", next: "녹턴을 R3로 보되, 상대가 B2·B3에서 녹턴을 가져가면 세주아니로 바꿉니다." },
-  { id: "Nocturne", response: "세주아니·노틸러스", next: "정글과 서폿을 먼저 확보합니다. 징크스가 R3 전에 빠지면 케이틀린을 확인합니다." },
-  { id: "Jayce", response: "노틸러스·징크스", next: "제이스의 포지션을 열어 두고, 탑이 보이면 R5에서 암베사·올라프 등 매치업을 봅니다." },
-  { id: "Yasuo", response: "노틸러스·징크스", next: "1세트 바텀과 정글 순서는 유지하고, 3세트 미드는 요네 또는 효준의 마법 피해 챔피언을 봅니다." },
-];
+export function phasesFor(format) {
+  if (format === "split") {
+    return [{ label: "1차 픽", steps: early }, { label: "2차 밴", steps: secondBans }, { label: "2차 픽", steps: late }];
+  }
+  return [{ label: "블루 선픽", steps: early.slice(0, 1) }, { label: "첫 교환", steps: early.slice(1, 5) },
+    { label: "마무리", steps: [early[5], ...late] }];
+}
 
-export const friendlyPool = firstPools;
-export const championMenu = Object.keys(roster).sort((a, b) => roster[a].localeCompare(roster[b], "ko"));
-const supportThreats = new Set(["Nautilus", "Leona", "Rell"]);
-const jungleThreats = new Set(["Nocturne", "Sejuani", "MonkeyKing"]);
-const carryThreats = new Set(["Jinx", "Caitlyn"]);
-const banAlternatives = {
-  a: ["Ekko", "Vex", "Mordekaiser", "Pantheon", "Lillia"],
-  b: ["Vex", "Vladimir", "Vi", "Briar", "Shaco"],
-  d: ["Camille", "Malzahar", "Mordekaiser", "Lux", "Morgana"],
-};
+export const openerIds = ["Nautilus", "Leona", "Jinx", "Nocturne", "Sejuani", "Jayce", "Yasuo"];
+const primarySupport = ["Leona", "Nautilus", "Rell"];
+const jungleTargets = ["Nocturne", "Sejuani", "MonkeyKing", "LeeSin"];
+const adcTargets = ["Jinx", "Caitlyn"];
+const protection = ["Lulu", "Karma", "Rakan"];
 
-export function getCross(state, moves = state.moves) {
-  const watch = getWatch(state.opponent, state.side);
-  const unavailable = new Set([...state.blocked, ...state.extra, ...(state.useWatch ? watch?.first ?? [] : [])]);
-  const enemy = [];
+export function getBoard(state, moves = state.moves) {
+  const phases = phasesFor(state.format);
+  const steps = phases.flatMap(phase => phase.steps);
+  const unavailable = new Set([...state.ours, ...state.theirs]);
+  const pool = poolsFor(state);
   const locks = Array(lanes.length).fill(null);
+  const enemy = [];
   const played = [];
 
   for (const move of moves.slice(0, steps.length)) {
     const step = steps[played.length];
     if (!Object.hasOwn(roster, move.id) || unavailable.has(move.id)) break;
-    const friendlyPick = step.kind === "pick" && step.side === state.side;
-    if (friendlyPick) {
-      if (!firstPools[move.lane]?.includes(move.id) || locks[move.lane]) break;
+    if (step.kind === "pick" && step.side === state.side) {
+      if (!pool[move.lane]?.includes(move.id) || locks[move.lane]) break;
       locks[move.lane] = move.id;
     } else if (move.lane !== null) {
       break;
@@ -59,101 +45,114 @@ export function getCross(state, moves = state.moves) {
     unavailable.add(move.id);
     played.push(move);
   }
-
-  return { watch, unavailable, enemy, locks, played, step: steps[played.length] };
+  return { phases, steps, played, unavailable, enemy, locks, pool, step: steps[played.length] };
 }
 
-const openLane = (board, lane) => !board.locks[lane] && firstPools[lane].some(id => !board.unavailable.has(id));
+function wasTaken(ids, board) {
+  return board.enemy.some(id => ids.includes(id));
+}
 
-export function planForCross(state, board) {
-  const { enemy, locks, unavailable } = board;
-  const enemyHasSupport = enemy.some(id => supportThreats.has(id));
-  const primarySupportOpen = [...supportThreats].some(id => !unavailable.has(id));
-  const jinxOpen = !unavailable.has("Jinx") || locks[3] === "Jinx";
+function stillOpen(ids, board) {
+  return ids.some(id => !board.unavailable.has(id));
+}
+
+export function planFor(state, board) {
+  const { locks, unavailable, pool } = board;
+  const supportStolen = wasTaken(primarySupport, board) && !stillOpen(primarySupport, board);
+  const luluFits = !state.swap && (!locks[3] || locks[3] === "Jinx" || locks[3] === "Vayne")
+    && (locks[3] || !unavailable.has("Jinx") || unavailable.has("Caitlyn"));
   const luluOpen = locks[4] === "Lulu" || (!locks[4] && !unavailable.has("Lulu"));
-  const peelPlan = enemyHasSupport && !primarySupportOpen && jinxOpen && luluOpen;
-  const preferred = peelPlan ? { 1: ["Sejuani", "MonkeyKing"], 4: ["Lulu"] } : {};
-  return { peelPlan, rounds: getDraft(unavailable, state.side, state.opponent, { locks, preferred }) };
+  const preferLulu = luluFits && supportStolen && luluOpen;
+  const support = locks[4] || (preferLulu ? "Lulu" : pool[4].find(id => !unavailable.has(id)));
+  const frontLine = protection.includes(support);
+  const yasuo = state.swap && (locks[2] === "Yasuo" || (!locks[2] && !unavailable.has("Yasuo")));
+  const junglePref = yasuo ? ["MonkeyKing", ...pool[1]] : frontLine ? ["Sejuani", "MonkeyKing", ...pool[1]] : pool[1];
+  const players = playersFor(state);
+  const reserved = new Set(unavailable);
+
+  const picks = pool.map((choices, lane) => {
+    const preference = lane === 1 ? junglePref : lane === 4 && support ? [support, ...choices] : choices;
+    const id = locks[lane] || preference.find(option => !reserved.has(option));
+    if (id) reserved.add(id);
+    return { lane, id, player: players[lane], locked: !!locks[lane] };
+  });
+  return { picks, preferLulu, frontLine };
 }
 
-export function adviceForCross(state, board, livePlan) {
-  const { step, enemy, locks, unavailable, played } = board;
-  if (!step) return { options: [], reason: "양 팀 픽을 모두 기록했습니다. 2·3세트 예시는 이번 기록을 반영합니다." };
+const slotsBeforeMid = ["B1", "R1", "R2", "B2", "B3", "R3"];
+
+export function adviceFor(state, board, plan) {
+  const { step, enemy, locks, played, pool } = board;
+  if (!step) return { options: [], note: "이번 경기의 선택이 끝났습니다. 다음 경기에서는 모든 챔피언이 다시 열립니다." };
   if (step.side !== state.side) {
-    const reason = step.kind === "ban"
-      ? "상대가 이번에 밴한 챔피언을 기록하면 다음 픽에서 제외합니다."
-      : "상대가 확정한 챔피언을 기록하세요. 픽 순서만으로 상대 포지션을 단정하지 않습니다.";
-    return { options: [], reason };
+    return { options: [], note: step.kind === "ban"
+      ? "상대 2차 밴을 기록하면 이후 후보에서 즉시 제외합니다."
+      : "상대가 가져간 챔피언을 기록하세요. 픽 순서만으로 상대 포지션을 단정하지 않습니다." };
   }
 
   if (step.kind === "ban") {
-    const planned = new Set(livePlan.rounds.flatMap(round => round.picks.map(({ id }) => id)));
-    const suggested = [...(board.watch?.second ?? []), ...(banAlternatives[state.opponent] ?? [])];
-    const options = [...new Set(suggested)].filter(id => !unavailable.has(id) && !planned.has(id)).slice(0, 2);
-    return {
-      options: options.map(id => ({ id, lane: null })),
-      reason: options.length
-        ? "상대가 아직 확정하지 않은 포지션을 봅니다. 상대가 드러낸 역할에 따라 후보를 바꿔 고를 수 있습니다."
-        : "상대가 아직 확정하지 않은 포지션의 후보 중, 우리 다음 세트에 필요한 카드를 피해서 고르세요.",
-    };
+    const preferred = getSelectedPlan(state)?.bans.slice(3) ?? [];
+    const alternates = getPlans(state).flatMap(entry => entry.bans);
+    const ours = new Set(plan.picks.map(({ id }) => id));
+    const options = [...new Set([...preferred, ...alternates])].filter(id => !board.unavailable.has(id) && !ours.has(id)).slice(0, 2)
+      .map(id => ({ id, lane: null }));
+    return { options, note: "상대가 아직 공개하지 않은 포지션을 견제하세요. 확정된 픽과 우리 조합 후보는 추천에서 제외합니다." };
   }
 
-  const { peelPlan, rounds } = livePlan;
-  const defaultPriority = [4, 3, 1, 2, 0];
-  const firstEnemy = enemy[0];
-  const enemyTookJungle = enemy.some(id => jungleThreats.has(id));
-  const enemyTookCarry = enemy.some(id => carryThreats.has(id));
-  const enemyTookSupport = enemy.some(id => supportThreats.has(id));
-  const supportPlan = rounds[0].picks[4].id;
-  let priority = defaultPriority;
-  let reason = "서폿·원딜·정글 중 남은 주력 카드부터 잡습니다. 상대 픽이 들어오면 다음 순서를 다시 봅니다.";
+  const general = [4, 3, 1, 2, 0];
+  const enemyJungle = wasTaken(jungleTargets, board);
+  const enemyAdc = wasTaken(adcTargets, board);
+  let priority = general;
+  let note = "서폿·원딜·정글 중 앞으로 상대가 가져갈 수 있는 카드부터 확보합니다.";
 
   if (step.slot === "B1") {
-    const protectionSupport = ["Lulu", "Karma", "Rakan"].includes(supportPlan);
-    if (protectionSupport) {
-      priority = [1, 3, 4, 2, 0];
-      reason = "주력 이니시 서폿이 소모됐습니다. 정글 앞라인을 먼저 확보하고 서폿이 원딜을 지키게 합니다.";
+    const needJungle = plan.frontLine || !stillOpen(["Nocturne", "Sejuani"], board);
+    const contestedNocturne = state.opponent === "b" && state.planIndex === 1 && !board.unavailable.has("Nocturne")
+      && primarySupport.filter(id => !board.unavailable.has(id)).length >= 2;
+    if (needJungle || contestedNocturne) {
+      priority = [1, 4, 3, 2, 0];
+      note = contestedNocturne
+        ? "서폿 후보가 둘 이상 열렸습니다. 신안산선과 겹치는 녹턴을 먼저 확보하고 서폿을 후속 픽으로 남깁니다."
+        : "정글 쪽 선택지가 줄었습니다. 남은 앞라인·교전 카드를 먼저 잡고 서폿과 원딜을 연결합니다.";
     } else {
-      reason = "노틸러스나 열린 주력 서폿을 선점합니다. 정글 후보가 사실상 한 장이면 정글을 먼저 가져갈 수 있습니다.";
+      note = "레오나나 노틸러스 등 열린 주력 서폿을 먼저 봅니다. 상대 R1·R2 뒤에 B2·B3 방향을 바꿀 수 있습니다.";
     }
   } else if (step.slot === "R5") {
     priority = [0, 2, 1, 3, 4];
-    reason = "마지막에 남겨둔 포지션을 상대 조합에 맞춥니다. 탑이 남았다면 확인된 상대 탑을 보고 암베사·올라프 등 열린 카드를 비교합니다.";
-  } else if (["R4", "B4", "B5"].includes(step.slot)) {
-    priority = step.slot === "R4" && openLane(board, 2) ? [2, 0, 1, 3, 4] : defaultPriority;
-    reason = step.slot === "R4"
-      ? "2차 밴을 반영해 미드 등 남은 필수 픽을 잡고, 가능한 경우 탑 매치업을 R5까지 남깁니다."
-      : "2차 밴 이후 남은 두 포지션을 채웁니다. 이 순서 뒤에 상대 R5가 남아 있습니다.";
-  } else if (peelPlan) {
+    note = "남은 포지션을 상대 조합에 맞춥니다. 탑을 남겼다면 확인된 상대 탑을 보고 암베사·올라프 등 열린 후보를 비교하세요.";
+  } else if (!slotsBeforeMid.includes(step.slot)) {
+    priority = step.slot === "R4" && !locks[2] ? [2, 0, 1, 3, 4] : general;
+    note = step.slot === "R4" ? "남은 급한 라인을 채우고, 가능하면 탑을 R5까지 남깁니다."
+      : "남은 두 포지션을 채우고 상대의 마지막 R5 카운터를 고려합니다.";
+  } else if (plan.preferLulu) {
     priority = [3, 1, 4, 2, 0];
-    reason = "징크스와 앞라인 정글을 먼저 확보합니다. 룰루는 원딜 보호를 맡고, 상대가 먼저 가져가면 남은 서폿으로 바꿉니다.";
-  } else if (state.side === "red" && ["R1", "R2"].includes(step.slot) && jungleThreats.has(firstEnemy)) {
+    note = "상대가 주력 서폿을 가져갔습니다. 징크스 계열 원딜과 정글 앞라인을 먼저 확보하고, 룰루 보호를 이어 봅니다.";
+  } else if (["R1", "R2"].includes(step.slot) && jungleTargets.includes(enemy[0])) {
     priority = [1, 4, 3, 2, 0];
-    reason = "상대 선픽으로 정글 주력 카드가 빠졌습니다. 열린 정글과 서폿부터 확보하고 R3의 원딜 대안을 남깁니다.";
-  } else if (enemyTookJungle && enemyTookCarry) {
+    note = "상대 B1이 정글 후보라면 남은 정글과 주력 서폿을 우선합니다. 원딜은 징크스와 케이틀린 두 장을 확인합니다.";
+  } else if (enemyJungle && enemyAdc) {
     priority = [1, 3, 4, 2, 0];
-    reason = "상대가 정글과 원딜 주력 카드를 가져갔습니다. 남은 정글·원딜을 먼저 잠그고 템포를 맞춥니다.";
-  } else if (enemyTookCarry) {
-    reason = "상대가 원딜을 선점했습니다. 우리 서폿과 케이틀린 등 남은 원딜을 연결하고, 정글은 상대 다음 픽을 본 뒤 다시 확인합니다.";
-  } else if (enemyTookSupport) {
-    reason = "상대가 주력 서폿을 선점했습니다. 열린 주력 서폿을 먼저 확인하고 바텀과 정글의 교전 방식을 맞춥니다.";
+    note = "상대가 정글·원딜 후보를 동시에 선점했습니다. 세주아니와 케이틀린 등 두 포지션의 대안을 먼저 확보합니다.";
+  } else if (enemyAdc) {
+    note = "상대가 원딜 후보를 먼저 가져갔습니다. 열린 서폿과 케이틀린·베인 등 남은 원딜의 구성을 확인합니다.";
+  } else if (enemyJungle && locks[4]) {
+    priority = [1, 3, 4, 2, 0];
+    note = "우리 서폿은 확보했습니다. 상대가 가져간 정글 후보보다 남은 정글 대안을 앞에 둡니다.";
   }
 
-  const next = steps[played.length + 1];
-  const pair = next?.side === state.side && next.kind === "pick";
-  const options = priority.filter(lane => !locks[lane] && rounds[0].picks[lane].id)
-    .slice(0, pair ? 2 : 1).map(lane => ({ id: rounds[0].picks[lane].id, lane }));
-  return { options, reason };
+  const next = board.steps[played.length + 1];
+  const paired = next?.side === state.side && next.kind === "pick";
+  const options = priority.filter(lane => !locks[lane] && plan.picks[lane].id && pool[lane].length)
+    .slice(0, paired ? 2 : 1).map(lane => plan.picks[lane]);
+  return { options, note };
 }
 
-export function readMoves(value) {
-  if (!value) return [];
-  return value.split(",").slice(0, steps.length).map(item => {
-    const [id, lane, extra] = item.split(".");
-    return { id: extra !== undefined ? "" : id, lane: /^[0-4]$/.test(lane ?? "") ? Number(lane) : lane === undefined ? null : -1 };
-  });
-}
-
-export function writeMoves(moves) {
-  return moves.map(({ id, lane }) => id + (lane === null ? "" : "." + lane)).join(",");
+export function lineupNote(state, plan) {
+  const [, jungle, middle, carry, support] = plan.picks.map(({ id }) => id);
+  if (plan.picks.some(pick => !pick.id)) return "준비한 후보가 소진된 라인입니다. 포지션 교대나 다른 준비 카드가 필요한지 확인하세요.";
+  if (state.swap && middle === "Yasuo" && jungle === "MonkeyKing") return "오공이 띄운 적에게 야스오가 이어갑니다. 미스 포츈 등 원딜이 합류할 수 있는 거리에서 시작합니다.";
+  if (protection.includes(support)) return "정글과 탑이 먼저 교전 각을 만들고, 서폿은 원딜이 공격할 공간을 지킵니다.";
+  if (carry === "Caitlyn") return "앞라인이 묶은 대상에 케이틀린 덫을 연결합니다. 목표물 앞 입구를 먼저 확보하세요.";
+  if (carry === "Vayne") return "베인이 가까운 상대부터 안전하게 공격할 수 있도록, 서폿이 상대 다이브에 대응합니다.";
+  return "정글과 서폿이 교전 시점을 맞추고, 원딜이 따라올 거리에서 시작합니다.";
 }

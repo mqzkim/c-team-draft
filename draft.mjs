@@ -1,157 +1,129 @@
-export const VERSION = "16.23.1";
+import { roster } from "./roster.mjs";
 
-export const names = {
-  Alistar: "알리스타", Ambessa: "암베사", Amumu: "아무무", Briar: "브라이어",
-  Caitlyn: "케이틀린", Camille: "카밀", Ekko: "에코", Ezreal: "이즈리얼",
-  Galio: "갈리오", Gangplank: "갱플랭크", Irelia: "이렐리아", Janna: "잔나",
-  Jax: "잭스", Jayce: "제이스", Jinx: "징크스", Kaisa: "카이사", Karma: "카르마",
-  Kassadin: "카사딘", Kayle: "케일", LeeSin: "리 신", Leona: "레오나", Lillia: "릴리아",
-  Lulu: "룰루", Lux: "럭스", Malphite: "말파이트", Malzahar: "말자하", MissFortune: "미스 포츈",
-  MonkeyKing: "오공", Mordekaiser: "모데카이저", Morgana: "모르가나", Nautilus: "노틸러스",
-  Nocturne: "녹턴", Olaf: "올라프", Orianna: "오리아나", Pantheon: "판테온",
-  Rakan: "라칸", Rell: "렐", Ryze: "라이즈", Sejuani: "세주아니", Shaco: "샤코",
-  Smolder: "스몰더", Swain: "스웨인", Sylas: "사일러스", Syndra: "신드라",
-  Thresh: "쓰레쉬", Vayne: "베인", Vex: "벡스", Vi: "바이", Viktor: "빅토르",
-  Vladimir: "블라디미르", Xayah: "자야", XinZhao: "신 짜오", Yasuo: "야스오",
-  Yone: "요네", Zac: "자크",
+export const VERSION = "16.23.1";
+export const lanes = ["탑", "정글", "미드", "원딜", "서폿"];
+export const opponents = [{ id: "a", label: "A팀" }, { id: "b", label: "B팀" }, { id: "d", label: "D팀" }, { id: "none", label: "미정" }];
+export const formats = [{ id: "sim", label: "동시 5밴" }, { id: "split", label: "3+2 밴" }];
+export const championMenu = Object.keys(roster).sort((a, b) => roster[a].localeCompare(roster[b], "ko"));
+
+const strategy = (label, bans, note) => ({ label, bans, note });
+
+export const scouting = {
+  a: "애 러 원딜 스웨인 13경기, mcrtpr 서폿 잔나 30경기·노틸러스 8경기, 외쳐갓도킹 미드 빅토르 23경기·벡스 19경기. 포지션은 드래프트 전 확인합니다.",
+  b: "신안산선 정글 모르가나 22경기·아무무 17경기·녹턴 15경기·브라이어 14경기, 홍차 미드 신드라 16경기·벡스 17경기, 용뇽용룡뇽용 서폿 쓰레쉬 17경기. 금융무야호 원딜 징크스는 10경기입니다.",
+  d: "수르롱 원딜 이즈리얼 13경기·자야 8경기, 토스화이팅 서폿 럭스 29경기, YUDABIN 탑 럼블 7경기·케일 5경기. [모름] 준원 챔프폭은 확인되지 않았습니다.",
 };
 
-export const targets = ["Jinx", "Yasuo", "Jayce", "Nocturne", "Yone", "Caitlyn"];
-export const supports = ["Leona", "Rell", "Nautilus", "Alistar", "Thresh"];
-export const selectable = [...targets, ...supports];
-const standardBans = ["Leona", "Rell"];
-
-export const presets = [
-  { id: "base", label: "기본", bans: standardBans },
-  { id: "carry-jg", label: "징크스·녹턴", bans: [...standardBans, "Jinx", "Nocturne"] },
-  { id: "four", label: "주력 4장", bans: [...standardBans, "Jinx", "Yasuo", "Jayce", "Nocturne"] },
-  { id: "support", label: "서폿 5장", bans: [...supports, "Jinx", "Nocturne"] },
-  { id: "mid", label: "야스오·요네", bans: [...standardBans, "Yasuo", "Yone"] },
-  { id: "double-lane", label: "미드·원딜 4장", bans: [...standardBans, "Yasuo", "Yone", "Jinx", "Caitlyn"] },
-];
-
-export const lanes = ["탑", "정글", "미드", "원딜", "서폿"];
-
-const watches = {
+const plans = {
   a: {
-    blue: [["Swain", "Zac", "Malphite"], ["Janna", "Lillia"]],
-    red: [["Swain", "Zac", "Janna"], ["Malphite", "Lillia"]],
-    note: "애 러 원딜 스웨인 13경기, mcrtpr 서폿 잔나 30경기·노틸러스 8경기. 민욱혜진이 정글이고 캐치캐치가 미드라면 자크나 릴리아 자리를 에코로 바꿀 수 있습니다.",
+    blue: [
+      strategy("바텀 보호·정글 견제", ["Swain", "Zac", "Janna", "Malphite", "Lillia"], "노틸러스를 열어 B1을 봅니다. 스웨인·잔나를 빼고 자크·릴리아로 캐치캐치 정글을 견제합니다."),
+      strategy("민욱혜진 정글 확인", ["Ekko", "Diana", "Swain", "Janna", "Vex"], "민욱혜진이 정글로 확인됐을 때 에코·다이애나를 자릅니다. 외쳐갓도킹이 미드라면 벡스로 진입 대응을 줄입니다."),
+    ],
+    red: [
+      strategy("바텀·미드 선점 견제", ["Swain", "Janna", "Zac", "Malphite", "Viktor"], "mcrtpr이 B1 노틸러스를 가져갈 때 징크스·세주아니를 봅니다. 외쳐갓도킹 미드가 예상될 때 빅토르 선점을 줄입니다."),
+      strategy("캐치캐치 미드 확인", ["Ekko", "Kassadin", "Swain", "Janna", "Malphite"], "민욱혜진 정글·캐치캐치 미드가 확인되면 자크·릴리아 대신 에코·카사딘으로 전환합니다."),
+    ],
   },
   b: {
-    both: [["Syndra", "Morgana", "Amumu"], ["Ryze", "Malphite"]],
-    note: "신안산선 정글 모르가나 22경기·아무무 17경기, 홍차 미드 신드라 16경기. 상대가 쓰레쉬를 1세트에 가져가면 다음 세트 서폿은 룰루를 확인하세요.",
+    blue: [
+      strategy("정글 두 장과 미드 견제", ["Morgana", "Amumu", "Syndra", "Ryze", "Malphite"], "모르가나의 보호와 아무무 이니시를 줄입니다. 노틸러스가 열리면 B1을 보고 녹턴·징크스 경쟁을 확인합니다."),
+      strategy("신안산선 정글 집중", ["Morgana", "Amumu", "Briar", "Vi", "Syndra"], "정글 네 장을 쓰는 대신 벡스·쓰레쉬를 열어 둡니다. 상대 녹턴 선점을 고려해 B1 녹턴 또는 후속 세주아니를 준비합니다."),
+    ],
+    red: [
+      strategy("상대 바텀 연결 끊기", ["Morgana", "Syndra", "Amumu", "Thresh", "Malphite"], "용뇽용룡뇽용이 서폿이면 쓰레쉬를 끊습니다. 우리도 쓰레쉬를 쓸 수 없으므로 노틸러스·알리스타까지 소모되면 룰루와 앞라인을 묶습니다."),
+      strategy("홍차 미드 두 장", ["Syndra", "Vex", "Morgana", "Amumu", "Briar"], "홍차 미드가 확실하면 신드라·벡스를 같이 막고 쓰레쉬를 열어 둡니다. 상대 B1 징크스에는 케이틀린을 준비합니다."),
+    ],
   },
   d: {
-    both: [["Kayle", "Xayah", "Ezreal"], ["Morgana", "Lux"]],
-    note: "수르롱 원딜 이즈리얼 13경기·자야 8경기, 토스화이팅 서폿 럭스 29경기, YUDABIN 탑 케일 5경기. 상대 서폿이 일찍 확정되면 2차 밴에 카밀·말자하를 검토하세요. [모름] 준원의 챔프폭은 확인되지 않았습니다.",
+    blue: [
+      strategy("수르롱 원딜·토스화이팅 서폿", ["Kayle", "Xayah", "Ezreal", "Lux", "Morgana"], "두 사람의 포지션이 이 배치일 때 바텀 폭을 줄입니다. 이즈리얼을 우리도 못 쓰니 원딜 후보를 미리 확인합니다."),
+      strategy("YUDABIN 탑 집중", ["Kayle", "Rumble", "Camille", "Lux", "Xayah"], "상대 탑이 YUDABIN으로 확인되면 세 장을 노립니다. 이즈리얼을 열어 우리 원딜 백업도 남깁니다."),
+    ],
+    red: [
+      strategy("상대 탑을 보고 R5", ["Kayle", "Xayah", "Ezreal", "Lux", "Camille"], "상대 탑 후보를 줄이고 R5에서 탑을 맞춥니다. 상대 B1 징크스면 노틸러스·케이틀린부터 봅니다."),
+      strategy("퍄퍄퍄퍄퍄퍄 서폿 확인", ["Kayle", "Rumble", "Blitzcrank", "Thresh", "Xayah"], "퍄퍄퍄퍄퍄퍄가 서폿일 때 그랩 두 장을 막는 선택입니다. 우리 쓰레쉬도 빠지고 토스화이팅 럭스가 열립니다."),
+    ],
   },
 };
 
-export const opponents = [{ id: "none", label: "미정" }, { id: "a", label: "A팀" }, { id: "b", label: "B팀" }, { id: "d", label: "D팀" }];
-
-export function getWatch(opponent, side) {
-  const watch = Object.hasOwn(watches, opponent) ? watches[opponent] : null;
-  if (!watch) return null;
-  const [first, second] = watch.both ?? watch[side];
-  return { first, second, note: watch.note };
+export function getPlans(state) {
+  return Object.hasOwn(plans, state.opponent) ? plans[state.opponent][state.side] : [];
 }
 
-const topPool = ["Jayce", "Ambessa", "Olaf", "Gangplank", "Jax", "Camille"];
-const junglePool = ["Nocturne", "Sejuani", "MonkeyKing", "LeeSin", "Briar", "XinZhao"];
-const devAdc = ["Jinx", "Caitlyn", "Vayne", "Ezreal", "Kaisa", "Smolder"];
-const supportPool = ["Leona", "Nautilus", "Rell", "Alistar", "Thresh", "Lulu", "Rakan", "Karma"];
-export const firstPools = [
-  topPool, junglePool, ["Sylas", "Ekko", "Viktor", "Orianna", "Kassadin", "Galio"], devAdc, supportPool,
+export function getSelectedPlan(state) {
+  return getPlans(state)[state.planIndex] ?? null;
+}
+
+export const enemyCases = [
+  strategy("레오나·렐 + 주력 3장", ["Leona", "Rell", "Jinx", "Nocturne", "Jayce"], "노틸러스가 남습니다. 암베사·세주아니·케이틀린으로 빈자리를 채웁니다."),
+  strategy("서폿 5장", ["Leona", "Rell", "Nautilus", "Alistar", "Thresh"], "룰루·라칸·카르마까지 엽니다. 룰루를 쓸 때 정글 앞라인을 먼저 확보합니다."),
+  strategy("주력 4장 + 렐", ["Jinx", "Yasuo", "Jayce", "Nocturne", "Rell"], "레오나는 밴이 아니므로 블루 선점 또는 레드 상대 B1을 열어 둡니다."),
+  strategy("바텀 겹밴", ["Leona", "Rell", "Nautilus", "Jinx", "Caitlyn"], "알리스타·쓰레쉬와 베인·이즈리얼을 확인합니다. 교대 조합으로도 바꿔 볼 수 있습니다."),
+  strategy("정글 2장", ["Leona", "Rell", "Nocturne", "Sejuani", "Jayce"], "오공을 우선 보고 상대가 먼저 가져가면 리 신을 확인합니다."),
+  strategy("미드 교대 견제", ["Leona", "Rell", "Alistar", "Yasuo", "Yone"], "효준 미드·DevJoon 원딜 배치를 우선합니다."),
 ];
 
-export function getDraft(blocked, side, opponent, opening = null) {
-  const watch = opening ? null : getWatch(opponent, side);
-  const locks = opening?.locks ?? [];
-  const unavailable = new Set([...blocked, ...(watch?.first ?? []), ...(watch?.second ?? []), ...locks.filter(Boolean)]);
+const top = ["Jayce", "Ambessa", "Olaf", "Gangplank", "Jax", "Camille"];
+const jungle = ["Nocturne", "Sejuani", "MonkeyKing", "LeeSin", "Briar", "XinZhao"];
+const support = ["Leona", "Nautilus", "Rell", "Alistar", "Thresh", "Lulu", "Rakan", "Karma"];
+const regular = [top, jungle, ["Sylas", "Ekko", "Viktor", "Orianna", "Kassadin", "Galio"],
+  ["Jinx", "Caitlyn", "Vayne", "Ezreal", "Kaisa", "Smolder"], support];
+const swapped = [top, jungle, ["Yasuo", "Yone", "Irelia"], ["MissFortune", "Kaisa", "Ezreal", "Xayah"], support];
 
-  function take(preferred, pool = []) {
-    const id = [...preferred, ...pool].find(candidate => !unavailable.has(candidate));
-    if (!id) return null;
-    unavailable.add(id);
-    return id;
-  }
-
-  return [0, 1, 2].map(index => {
-    function inLane(lane, preferred, pool = []) {
-      if (index !== 0) return take(preferred, pool);
-      return locks[lane] || take([...(opening?.preferred[lane] ?? []), ...preferred], pool);
-    }
-
-    const top = inLane(0, [topPool[index]], topPool);
-    const jungle = inLane(1, [junglePool[index]], junglePool);
-    const swap = index === 2 && ["Yasuo", "Yone"].some(id => !unavailable.has(id));
-    const hyoMid = [
-      firstPools[2],
-      ["Viktor", "Orianna", "Ekko", "Kassadin", "Galio"],
-      ["Orianna", "Ekko", "Galio", "Kassadin", "Viktor"],
-    ][index];
-    const middle = swap ? take(["Yasuo", "Yone"]) : inLane(2, hyoMid);
-    const adcPriority = [
-      ["Jinx", "Caitlyn"],
-      ["Caitlyn", "Vayne", "Ezreal", "Kaisa"],
-      ["Smolder", "Ezreal", "Vayne", "Kaisa"],
-    ][index];
-    const bottom = swap
-      ? take(middle === "Yasuo" ? ["MissFortune", "Kaisa", "Ezreal"] : ["Kaisa", "MissFortune", "Ezreal"])
-      : inLane(3, adcPriority, devAdc);
-    const supportPriority = [supportPool, ["Thresh", "Lulu", "Rakan", "Karma"], ["Lulu", "Rakan", "Karma"]][index];
-    const support = inLane(4, supportPriority, supportPool);
-
-    const players = ["탑가는 경문이", "검은살치살", swap ? "DevJoon" : "효준", swap ? "효준" : "DevJoon", "mqz"];
-    const picks = [top, jungle, middle, bottom, support].map((id, lane) => ({ id, lane, player: players[lane] }));
-    return { picks, swap, note: getFightNote({ middle, jungle, bottom, support }) };
-  });
+export function poolsFor(state) {
+  return state.swap ? swapped : regular;
 }
 
-function getFightNote({ middle, jungle, bottom, support }) {
-  if (middle === "Yasuo") {
-    if (jungle === "MonkeyKing") return "오공이 띄운 적에게 야스오가 궁을 잇고, 미스 포츈이 닿는 거리에서 교전합니다.";
-    if (jungle === "LeeSin") return "리 신이 띄운 대상에 야스오가 합류합니다. 미스 포츈이 따라갈 수 있는 각에서 시작합니다.";
-    return "야스오가 연결할 띄우기와 원딜이 따라갈 거리가 확보되면 교전합니다.";
-  }
-  if (middle === "Yone") return "요네가 측면에서 합류할 각을 보고, 정글과 서폿이 만든 교전에 카이사가 이어갑니다.";
-  if (support === "Lulu" || support === "Karma") return "정글이 먼저 교전을 열고 서폿은 원딜이 공격할 공간을 지킵니다.";
-  if (bottom === "Caitlyn") return "정글이나 서폿이 묶은 대상에 케이틀린이 덫을 놓고, 목표물 앞 입구를 장악합니다.";
-  if (jungle === "Nocturne") return "서폿이 연 대상에 녹턴이 합류합니다. 원딜이 바로 공격할 수 있는 거리를 확인합니다.";
-  if (bottom === "Vayne") return "베인이 안전하게 때릴 수 있는 앞라인부터 공격하고, 미드는 진입하는 상대를 견제합니다.";
-  return "정글과 서폿이 진입 시점을 맞추고, 미드와 원딜이 따라갈 수 있는 거리에서 시작합니다.";
+export function playersFor(state) {
+  return ["탑가는 경문이", "검은살치살", state.swap ? "DevJoon" : "효준", state.swap ? "효준" : "DevJoon", "mqz"];
 }
 
-export function getFirstPicks(lineup, side, blocked) {
-  const support = lineup.picks[4].id;
-  const fragileSupport = ["Lulu", "Karma", "Rakan"].includes(support);
-  const jungleContested = blocked.has("Nocturne") && fragileSupport;
-  const priority = jungleContested ? [1, 3, 4] : fragileSupport ? [3, 4, 1] : [4, 3, 1];
-  return {
-    picks: priority.map(lane => lineup.picks[lane]),
-    note: side === "red"
-      ? "R5는 상대 탑이 보인 뒤 매치업에 쓰세요. 정글 대체가 한 장이면 첫 두 픽으로 당깁니다."
-      : "B1 이후 상대 픽을 보고 B2·B3를 확정하세요. 정글 후보가 한 장이면 B1을 정글에 씁니다.",
-  };
+export function limitFor(state) {
+  return state.format === "split" ? 3 : 5;
+}
+
+export function applyPlan(state, index = 0) {
+  state.planIndex = index;
+  state.ours = (getSelectedPlan(state)?.bans ?? []).slice(0, limitFor(state));
+  state.moves = [];
+}
+
+function readIds(value, limit) {
+  return [...new Set((value ?? "").split(",").filter(id => Object.hasOwn(roster, id)))].slice(0, limit);
 }
 
 export function readState(search) {
   const query = new URLSearchParams(search);
-  const side = query.get("side") === "red" ? "red" : "blue";
-  const opponent = opponents.some(option => option.id === query.get("vs")) ? query.get("vs") : "none";
-  const selected = query.has("off") ? query.get("off").split(",") : presets[0].bans;
-  const blocked = new Set(selectable.filter(id => selected.includes(id)));
-  return { side, opponent, blocked };
+  const state = {
+    side: query.get("side") === "red" ? "red" : "blue",
+    opponent: opponents.some(({ id }) => id === query.get("vs")) ? query.get("vs") : "a",
+    format: query.get("format") === "split" ? "split" : "sim",
+    swap: query.get("roles") === "swap",
+    planIndex: query.get("plan") === "1" ? 1 : 0,
+    moves: [],
+  };
+  const limit = limitFor(state);
+  state.ours = query.has("ours") ? readIds(query.get("ours"), limit) : (getSelectedPlan(state)?.bans ?? []).slice(0, limit);
+  state.theirs = readIds(query.get("theirs"), limit);
+  if (state.format === "split") state.theirs = state.theirs.filter(id => !state.ours.includes(id));
+  state.moves = (query.get("draft") ?? "").split(",").filter(Boolean).slice(0, 14).map(token => {
+    const [id, lane, extra] = token.split(".");
+    return { id: extra !== undefined ? "" : id, lane: /^[0-4]$/.test(lane ?? "") ? Number(lane) : lane === undefined ? null : -1 };
+  });
+  return state;
 }
 
-export function makeSearch({ side, opponent, blocked }) {
+export function makeSearch(state) {
   const query = new URLSearchParams();
-  if (side !== "blue") query.set("side", side);
-  if (opponent !== "none") query.set("vs", opponent);
-  const chosen = selectable.filter(id => blocked.has(id));
-  if (chosen.length !== standardBans.length || !standardBans.every(id => blocked.has(id))) {
-    query.set("off", chosen.join(","));
-  }
+  if (state.side === "red") query.set("side", "red");
+  if (state.opponent !== "a") query.set("vs", state.opponent);
+  if (state.format === "split") query.set("format", "split");
+  if (state.swap) query.set("roles", "swap");
+  if (state.planIndex) query.set("plan", String(state.planIndex));
+  const defaultOurs = (getSelectedPlan(state)?.bans ?? []).slice(0, limitFor(state));
+  if (state.ours.join(",") !== defaultOurs.join(",")) query.set("ours", state.ours.join(","));
+  if (state.theirs.length) query.set("theirs", state.theirs.join(","));
+  if (state.moves.length) query.set("draft", state.moves.map(({ id, lane }) => id + (lane === null ? "" : "." + lane)).join(","));
   return query.toString();
 }
